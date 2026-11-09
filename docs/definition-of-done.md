@@ -1,5 +1,3 @@
-# Definition of Ready и Definition of Done
-
 ## Definition of Ready (задача готова к работе)
 
 Задачу можно брать в спринт, если:
