@@ -8,7 +8,7 @@
     "districts":         {"geometry": ["Polygon", "MultiPolygon"], "min_count": 1, "id": ["osm_type", "osm_id"], "required": ["name"]},
     "charging_stations": {"geometry": ["Point", "MultiPoint"], "min_count": 1, "id": ["osm_type", "osm_id"], "required": ["amenity"]},
     "malls":             {"geometry": ["Point", "Polygon"], "min_count": 1, "id": ["osm_type", "osm_id"]},
-    "parking":           {"geometry": ["Point", "Polygon"], "min_count": 1, "id": ["osm_type", "osm_id"]},
+    "parking":           {"geometry": ["Point", "Polygon", "MultiPolygon"], "min_count": 1, "id": ["osm_type", "osm_id"]},
     "offices":           {"geometry": ["Point", "Polygon"], "min_count": 1, "id": ["osm_type", "osm_id"]}
   }
 }
