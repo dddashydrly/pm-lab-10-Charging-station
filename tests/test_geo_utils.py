@@ -1,9 +1,16 @@
 """Тесты расчётных функций. Запуск: pytest (из корня репозитория)."""
 import geopandas as gpd
 import pytest
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 
-from geo_utils import nearest_distance, share_within, to_metric
+from geo_utils import (
+    count_by_district,
+    density_per_area,
+    nearest_distance,
+    share_within,
+    to_metric,
+    within_distance,
+)
 
 UTM_EKB = "EPSG:32641"  # зона UTM 41N, Екатеринбург
 
@@ -43,3 +50,42 @@ def test_share_within_rejects_degrees():
 
 def test_share_within_empty_targets():
     assert share_within(layer([]), layer([(0, 0)]), 500) == 0.0
+
+
+
+def test_count_by_district_includes_empty_districts():
+    districts = gpd.GeoDataFrame(
+        {"name": ["Первый", "Второй", "Третий"]},
+        geometry=[
+            box(0, 0, 10, 10),
+            box(10, 0, 20, 10),
+            box(20, 0, 30, 10)
+        ],
+        crs=UTM_EKB
+    )
+
+    points = layer([(1, 1), (11, 1)])
+
+    result = count_by_district(points, districts)
+
+    assert result.tolist() == [1, 1, 0]
+
+
+def test_density_per_area():
+    assert density_per_area(20, 5) == pytest.approx(40)
+
+
+def test_density_per_area_rejects_zero():
+    with pytest.raises(ValueError):
+        density_per_area(10, 0)
+
+
+def test_within_distance():
+    sources = layer([(0, 0)])
+    targets = layer([(300, 400), (600, 0)])
+
+    result = within_distance(targets, sources, 500)
+
+    assert len(result) == 1
+    assert result.index.tolist() == [0]
+
