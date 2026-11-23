@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import geopandas as gpd
+import pandas as pd
 
 
 def to_metric(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -52,38 +53,48 @@ def share_within(targets: gpd.GeoDataFrame, sources: gpd.GeoDataFrame, distance_
     return float((dist <= distance_m).mean())
 
 
-def test_count_by_district_includes_empty_districts():
-    districts = gpd.GeoDataFrame(
-        {"name": ["Первый", "Второй", "Третий"]},
-        geometry=[
-            box(0, 0, 10, 10),
-            box(10, 0, 20, 10),
-            box(20, 0, 30, 10)
-        ],
-        crs=UTM_EKB
+def count_by_district(points: gpd.GeoDataFrame,
+                      districts: gpd.GeoDataFrame) -> pd.Series:
+    """Подсчитывает количество объектов в каждом районе.
+
+    Возвращает количество объектов для каждого района,
+    включая районы, в которых объектов нет.
+    """
+    joined = gpd.sjoin(
+        points[["geometry"]],
+        districts[["geometry"]],
+        how="left",
+        predicate="within"
     )
 
-    points = layer([(1, 1), (11, 1)])
+    counts = joined.groupby("index_right").size()
 
-    result = count_by_district(points, districts)
-
-    assert result.tolist() == [1, 1, 0]
+    return counts.reindex(districts.index, fill_value=0).astype(int)
 
 
-def test_density_per_area():
-    assert density_per_area(20, 5) == pytest.approx(40)
+def density_per_area(count: float, area_km2: float) -> float:
+    """Рассчитывает плотность объектов на 10 км²."""
+    if area_km2 <= 0:
+        raise ValueError("Площадь должна быть положительной")
+
+    return count / area_km2 * 10
 
 
-def test_density_per_area_rejects_zero():
-    with pytest.raises(ValueError):
-        density_per_area(10, 0)
+def within_distance(
+    targets: gpd.GeoDataFrame,
+    sources: gpd.GeoDataFrame,
+    distance_m: float
+) -> gpd.GeoDataFrame:
+    """Возвращает объекты targets, находящиеся не дальше distance_m
+    метров от ближайшего объекта sources.
+    """
+    if distance_m <= 0:
+        raise ValueError("Расстояние должно быть положительным")
 
+    if targets.empty:
+        return targets.copy()
 
-def test_within_distance():
-    sources = layer([(0, 0)])
-    targets = layer([(300, 400), (600, 0)])
+    distances = nearest_distance(targets, sources)
 
-    result = within_distance(targets, sources, 500)
+    return targets.loc[distances <= distance_m].copy()
 
-    assert len(result) == 1
-    assert result.index.tolist() == [0]
