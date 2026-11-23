@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import geopandas as gpd
+import pandas as pd
 
 
 def to_metric(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -50,3 +51,50 @@ def share_within(targets: gpd.GeoDataFrame, sources: gpd.GeoDataFrame, distance_
         return 0.0
     dist = nearest_distance(targets, sources)
     return float((dist <= distance_m).mean())
+
+
+def count_by_district(points: gpd.GeoDataFrame,
+                      districts: gpd.GeoDataFrame) -> pd.Series:
+    """Подсчитывает количество объектов в каждом районе.
+
+    Возвращает количество объектов для каждого района,
+    включая районы, в которых объектов нет.
+    """
+    joined = gpd.sjoin(
+        points[["geometry"]],
+        districts[["geometry"]],
+        how="left",
+        predicate="within"
+    )
+
+    counts = joined.groupby("index_right").size()
+
+    return counts.reindex(districts.index, fill_value=0).astype(int)
+
+
+def density_per_area(count: float, area_km2: float) -> float:
+    """Рассчитывает плотность объектов на 10 км²."""
+    if area_km2 <= 0:
+        raise ValueError("Площадь должна быть положительной")
+
+    return count / area_km2 * 10
+
+
+def within_distance(
+    targets: gpd.GeoDataFrame,
+    sources: gpd.GeoDataFrame,
+    distance_m: float
+) -> gpd.GeoDataFrame:
+    """Возвращает объекты targets, находящиеся не дальше distance_m
+    метров от ближайшего объекта sources.
+    """
+    if distance_m <= 0:
+        raise ValueError("Расстояние должно быть положительным")
+
+    if targets.empty:
+        return targets.copy()
+
+    distances = nearest_distance(targets, sources)
+
+    return targets.loc[distances <= distance_m].copy()
+
