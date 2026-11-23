@@ -50,3 +50,40 @@ def share_within(targets: gpd.GeoDataFrame, sources: gpd.GeoDataFrame, distance_
         return 0.0
     dist = nearest_distance(targets, sources)
     return float((dist <= distance_m).mean())
+
+
+def test_count_by_district_includes_empty_districts():
+    districts = gpd.GeoDataFrame(
+        {"name": ["Первый", "Второй", "Третий"]},
+        geometry=[
+            box(0, 0, 10, 10),
+            box(10, 0, 20, 10),
+            box(20, 0, 30, 10)
+        ],
+        crs=UTM_EKB
+    )
+
+    points = layer([(1, 1), (11, 1)])
+
+    result = count_by_district(points, districts)
+
+    assert result.tolist() == [1, 1, 0]
+
+
+def test_density_per_area():
+    assert density_per_area(20, 5) == pytest.approx(40)
+
+
+def test_density_per_area_rejects_zero():
+    with pytest.raises(ValueError):
+        density_per_area(10, 0)
+
+
+def test_within_distance():
+    sources = layer([(0, 0)])
+    targets = layer([(300, 400), (600, 0)])
+
+    result = within_distance(targets, sources, 500)
+
+    assert len(result) == 1
+    assert result.index.tolist() == [0]
